@@ -13,11 +13,29 @@ dotenv.config()
 
 const app = express()
 
-// app.use(cors({ origin: 'http://localhost:5173/', credentials: true }))
+/**
+ * ✅ Разрешённые origin
+ * Netlify + локалка
+ */
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:5174',
+  process.env.FRONTEND_URL,
+]
+
 app.use(
   cors({
-    origin: ['http://localhost:5173', 'http://localhost:5174'], // ✅ фронтенд (Vite)
-    credentials: true, // ✅ дозвіл надсилати cookie
+    origin: (origin, callback) => {
+      // разрешаем запросы без origin (Render health check, Postman)
+      if (!origin) return callback(null, true)
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true)
+      }
+
+      return callback(new Error(`CORS blocked for origin: ${origin}`))
+    },
+    credentials: true,
   })
 )
 
@@ -25,9 +43,19 @@ app.use(express.json())
 app.use(cookieParser())
 app.use(delay)
 
+/**
+ * ✅ API routes
+ */
 app.use('/api/auth', authRoutes)
 app.use('/api/users', userRoutes)
 app.use('/api/posts', postRoutes)
 app.use('/api/comments', commentRoutes)
 
-app.listen(4000, () => console.log('API on http://localhost:4000'))
+/**
+ * ✅ PORT для Render
+ */
+const PORT = process.env.PORT || 4000
+app.listen(PORT, () => {
+  console.log(`🚀 API running on port ${PORT}`)
+})
+
